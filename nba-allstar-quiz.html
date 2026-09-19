@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>各チームの直近10人のオールスター</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F2F3F5; --ink:#16181D; --ink-soft:#5C616B; --rule:#D5D8DE;
+  --slot:#FFFFFF; --slot-empty:#E7E9ED; --good:#1B7F4B; --reveal:#A8302E; --focus:#2B6CB0;
+}
+:root:not([data-theme="light"]){
+  @media (prefers-color-scheme: dark){
+    --paper:#14161A; --ink:#EDEFF2; --ink-soft:#9AA1AD; --rule:#2C3037;
+    --slot:#1E2128; --slot-empty:#191C21; --good:#4ADE80; --reveal:#F87171; --focus:#7BA7E0;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#14161A; --ink:#EDEFF2; --ink-soft:#9AA1AD; --rule:#2C3037;
+  --slot:#1E2128; --slot-empty:#191C21; --good:#4ADE80; --reveal:#F87171; --focus:#7BA7E0;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper); color:var(--ink);
+  font-family:"Zen Kaku Gothic New",system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+  font-size:15px; line-height:1.5; -webkit-text-size-adjust:100%;
+}
+.num{font-family:"Oswald",Impact,sans-serif; font-variant-numeric:tabular-nums; letter-spacing:.02em}
+
+.bar{position:sticky; top:0; z-index:20; background:var(--paper); border-bottom:1px solid var(--rule); padding:10px 16px 12px}
+.bar-inner{max-width:1280px; margin:0 auto; display:flex; flex-wrap:wrap; gap:12px; align-items:center}
+h1{font-size:16px; font-weight:700; margin:0; flex:1 1 220px; min-width:0}
+h1 small{display:block; font-weight:400; font-size:12px; color:var(--ink-soft)}
+.readout{display:flex; gap:18px; align-items:baseline}
+.clock{font-size:30px; line-height:1; font-weight:500}
+.clock.low{color:var(--reveal)}
+.tally{font-size:22px; line-height:1; font-weight:500}
+.tally span{font-size:13px; color:var(--ink-soft)}
+.controls{display:flex; gap:8px}
+button{font:inherit; font-size:13px; font-weight:500; padding:7px 14px; border-radius:2px; cursor:pointer;
+  border:1px solid var(--ink); background:transparent; color:var(--ink)}
+button:hover{background:var(--ink); color:var(--paper)}
+button:focus-visible, input:focus-visible{outline:2px solid var(--focus); outline-offset:2px}
+button[disabled]{opacity:.35; cursor:default}
+button[disabled]:hover{background:transparent; color:var(--ink)}
+.entry{flex:1 1 100%; display:flex; gap:8px; align-items:center}
+input[type=text]{flex:1; font:inherit; font-size:17px; padding:10px 14px; border:1px solid var(--rule);
+  border-radius:2px; background:var(--slot); color:var(--ink)}
+input[type=text]::placeholder{color:var(--ink-soft)}
+.hint{font-size:12px; color:var(--ink-soft); white-space:nowrap}
+
+.notice{max-width:1280px; margin:12px auto 0; padding:9px 14px; border:1px dashed var(--rule);
+  border-radius:2px; font-size:12px; line-height:1.6; color:var(--ink-soft)}
+.notice b{color:var(--ink); font-weight:500}
+main{max-width:1280px; margin:0 auto; padding:16px; display:grid;
+  grid-template-columns:repeat(4,1fr); gap:14px; align-items:start}
+.team{border:1px solid var(--rule); border-radius:2px; overflow:hidden}
+.team-head{padding:5px 9px; background:var(--tc,var(--ink)); color:#fff; display:flex; justify-content:space-between; align-items:baseline}
+.team-head b{font-size:14px; font-weight:700}
+.team-head i{font-style:normal; font-size:10px; opacity:.8}
+.row{display:flex; border-top:1px solid var(--rule)}
+.team .row:first-of-type{border-top:none}
+.yr{flex:0 0 46px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:500;
+  color:var(--ink-soft); background:var(--slot-empty); border-right:1px solid var(--rule)}
+.nm{flex:1; min-width:0; padding:6px 9px; background:var(--slot); font-size:13px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.nm:empty::after{content:"\00a0"}
+.row.done .nm{color:var(--good); font-weight:500}
+.row.shown .nm{color:var(--reveal)}
+
+main.hidden{position:relative; min-height:240px; display:block}
+main.hidden .team{display:none}
+main.hidden::after{content:"一時停止中 — 「再開」で続きから"; position:absolute; inset:16px;
+  display:flex; align-items:center; justify-content:center; font-size:15px; color:var(--ink-soft);
+  border:1px dashed var(--rule)}
+
+@media (max-width:1100px){ main{grid-template-columns:repeat(3,1fr)} }
+@media (max-width:820px){ main{grid-template-columns:repeat(2,1fr)} h1{flex-basis:100%} .clock{font-size:26px} }
+@media (max-width:520px){ main{grid-template-columns:1fr} }
+@media (prefers-reduced-motion:no-preference){
+  .row.done .nm{animation:pop .2s ease-out}
+  @keyframes pop{from{transform:translateX(-4px);opacity:.3}to{transform:none;opacity:1}}
+}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div class="bar-inner">
+    <h1>各チームの直近10人のオールスター<small>2026年まで / 姓のみで解答・ひらがなでも可</small></h1>
+    <div class="readout">
+      <div class="clock num" id="clock">15:00</div>
+      <div class="tally num"><b id="got">0</b><span>/</span><b id="total">0</b></div>
+    </div>
+    <div class="controls">
+      <button id="start">スタート</button>
+      <button id="pause" disabled>一時停止</button>
+      <button id="giveup" disabled>ギブアップ</button>
+    </div>
+    <div class="entry">
+      <input type="text" id="entry" placeholder="選手の姓を入力（例：よきっち / ヨキッチ）" autocomplete="off" autocapitalize="off" spellcheck="false" disabled>
+      <span class="hint" id="hint">スタートを押すと入力できます</span>
+    </div>
+  </div>
+</div>
+
+<div class="notice">
+  判定基準：所属は<b>オールスター開催時点</b>／<b>欠場者・追加選出者も含む</b>／年は<b>その球団での最後の選出年</b>／
+  旧名称・移転前の球団史を含む（例：サンダーはソニックス時代を含む）。
+  同じ年に複数の選出者がいる枠は、該当する選手を全員収録しています。
+</div>
+<main id="board"></main>
+
+<script>
+const T = (team,en,color,rows) => ({team,en,color,rows});
+const r = (y,first,last,alias) => ({y,first,last,alias});
+
+const DATA = [
+T("アトランタ・ホークス","ATL","#C8102E",[
+ r(2026,"ジェイレン","ジョンソン"), r(2025,"トレイ","ヤング"), r(2017,"ポール","ミルサップ"),
+ r(2016,"アル","ホーフォード"), r(2015,"カイル","コーバー"), r(2015,"ジェフ","ティーグ"),
+ r(2012,"ジョー","ジョンソン"), r(2002,"シャリーフ","アブドゥル・ラヒーム",["アブドゥールラヒーム"]),
+ r(2001,"ディケンベ","ムトンボ",["ムトゥンボ"]), r(1998,"スティーブ","スミス")]),
+T("ボストン・セルティックス","BOS","#007A33",[
+ r(2026,"ジェイレン","ブラウン"), r(2025,"ジェイソン","テイタム"), r(2020,"ケンバ","ウォーカー"),
+ r(2019,"カイリー","アービング",["アーヴィング"]), r(2018,"アル","ホーフォード"),
+ r(2017,"アイザイア","トーマス"), r(2013,"ケビン","ガーネット"), r(2013,"ラジョン","ロンド"),
+ r(2012,"ポール","ピアース"), r(2011,"レイ","アレン")]),
+T("ブルックリン・ネッツ","BKN","#1A1A1A",[
+ r(2022,"ケビン","デュラント"), r(2021,"カイリー","アービング",["アーヴィング"]),
+ r(2021,"ジェームズ","ハーデン"), r(2019,"ディアンジェロ","ラッセル"), r(2014,"ジョー","ジョンソン"),
+ r(2013,"ブルック","ロペス"), r(2012,"デロン","ウィリアムズ"), r(2009,"デビン","ハリス"),
+ r(2008,"ジェイソン","キッド"), r(2007,"ビンス","カーター")]),
+T("シャーロット・ホーネッツ","CHA","#1D1160",[
+ r(2022,"ラメロ","ボール"), r(2019,"ケンバ","ウォーカー"), r(2010,"ジェラルド","ウォレス"),
+ r(2002,"バロン","デイビス",["デイヴィス"]), r(2000,"エディ","ジョーンズ"), r(1998,"グレン","ライス"),
+ r(1995,"ラリー","ジョンソン"), r(1995,"アロンゾ","モーニング")]),
+T("シカゴ・ブルズ","CHI","#CE1141",[
+ r(2023,"デマー","デローザン"), r(2022,"ザック","ラビーン",["ラヴィーン"]),
+ r(2017,"ジミー","バトラー"), r(2016,"パウ","ガソール"), r(2014,"ヨアキム","ノア"),
+ r(2013,"ルオル","デン"), r(2012,"デリック","ローズ"), r(1998,"マイケル","ジョーダン"),
+ r(1997,"スコッティ","ピッペン"), r(1994,"ホーレス","グラント"), r(1994,"B.J.","アームストロング")]),
+T("クリーブランド・キャバリアーズ","CLE","#6F263D",[
+ r(2026,"ドノバン","ミッチェル"), r(2025,"ダリアス","ガーランド"), r(2025,"エバン","モブリー"),
+ r(2022,"ジャレット","アレン"), r(2018,"レブロン","ジェームズ"), r(2018,"ケビン","ラブ"),
+ r(2017,"カイリー","アービング",["アーヴィング"]), r(2009,"モー","ウィリアムズ"),
+ r(2005,"ジドルーナス","イルガスカス"), r(1998,"ショーン","ケンプ")]),
+T("ダラス・マーベリックス","DAL","#00538C",[
+ r(2025,"カイリー","アービング",["アーヴィング"]), r(2025,"アンソニー","デイビス",["デイヴィス"]),
+ r(2024,"ルカ","ドンチッチ"), r(2019,"ダーク","ノビツキー",["ノヴィツキー"]),
+ r(2010,"ジェイソン","キッド"), r(2007,"ジョシュ","ハワード"), r(2003,"スティーブ","ナッシュ"),
+ r(2001,"マイケル","フィンリー"), r(1997,"クリス","ギャトリング"), r(1990,"ロランド","ブラックマン")]),
+T("デンバー・ナゲッツ","DEN","#0E2240",[
+ r(2026,"ニコラ","ヨキッチ",["ジョキッチ"]), r(2026,"ジャマール","マレー"),
+ r(2011,"カーメロ","アンソニー"), r(2010,"チョーンシー","ビラップス"), r(2008,"アレン","アイバーソン"),
+ r(2001,"アントニオ","マクダイス"), r(1996,"ディケンベ","ムトンボ",["ムトゥンボ"]),
+ r(1990,"ファット","リーバー"), r(1989,"アレックス","イングリッシュ"), r(1985,"カルビン","ナット")]),
+T("デトロイト・ピストンズ","DET","#C8102E",[
+ r(2026,"ケイド","カニンガム"), r(2026,"ジェイレン","デューレン"), r(2019,"ブレイク","グリフィン"),
+ r(2018,"アンドレ","ドラモンド"), r(2009,"アレン","アイバーソン"), r(2008,"チョーンシー","ビラップス"),
+ r(2008,"リチャード","ハミルトン"), r(2008,"ラシード","ウォレス"), r(2006,"ベン","ウォレス"),
+ r(2001,"ジェリー","スタックハウス")]),
+T("ゴールデンステート・ウォリアーズ","GSW","#1D428A",[
+ r(2026,"ステフィン","カリー",["ステファン"]), r(2022,"ドレイモンド","グリーン"),
+ r(2022,"アンドリュー","ウィギンス"), r(2019,"ケビン","デュラント"), r(2019,"クレイ","トンプソン"),
+ r(2013,"デビッド","リー"), r(1997,"ラトレル","スプリーウェル"), r(1993,"ティム","ハーダウェイ"),
+ r(1993,"クリス","マリン"), r(1987,"ジョー・バリー","キャロル"), r(1987,"スリーピー","フロイド")]),
+T("ヒューストン・ロケッツ","HOU","#CE1141",[
+ r(2026,"ケビン","デュラント"), r(2026,"アルペレン","シェングン",["センガン"]),
+ r(2020,"ジェームズ","ハーデン"), r(2020,"ラッセル","ウェストブルック"), r(2014,"ドワイト","ハワード"),
+ r(2011,"","ヤオ・ミン",["ヤオミン","ヤオ"]), r(2007,"トレイシー","マグレディ"),
+ r(2004,"スティーブ","フランシス"), r(1997,"チャールズ","バークレー"),
+ r(1997,"ハキーム","オラジュワン",["オラジュオン"]), r(1997,"クライド","ドレクスラー")]),
+T("インディアナ・ペイサーズ","IND","#002D62",[
+ r(2026,"パスカル","シアカム"), r(2024,"タイリース","ハリバートン"), r(2021,"ドマンタス","サボニス"),
+ r(2019,"ビクター","オラディポ"), r(2017,"ポール","ジョージ"), r(2014,"ロイ","ヒバート"),
+ r(2009,"ダニー","グレンジャー"), r(2007,"ジャーメイン","オニール"), r(2004,"ロン","アーテスト"),
+ r(2003,"ブラッド","ミラー")]),
+T("LAクリッパーズ","LAC","#C8102E",[
+ r(2026,"カワイ","レナード",["レオナルド"]), r(2025,"ジェームズ","ハーデン"),
+ r(2024,"ポール","ジョージ"), r(2017,"ディアンドレ","ジョーダン"), r(2016,"クリス","ポール"),
+ r(2015,"ブレイク","グリフィン"), r(2010,"クリス","ケイマン"), r(2006,"エルトン","ブランド"),
+ r(1994,"ダニー","マニング"), r(1986,"マルケス","ジョンソン")]),
+T("ロサンゼルス・レイカーズ","LAL","#552583",[
+ r(2026,"ルカ","ドンチッチ"), r(2026,"レブロン","ジェームズ"), r(2024,"アンソニー","デイビス",["デイヴィス"]),
+ r(2016,"コービー","ブライアント"), r(2013,"ドワイト","ハワード"), r(2012,"アンドリュー","バイナム"),
+ r(2011,"パウ","ガソール"), r(2004,"シャキール","オニール"), r(1998,"エディ","ジョーンズ"),
+ r(1998,"ニック","バンエクセル")]),
+T("メンフィス・グリズリーズ","MEM","#5D76A9",[
+ r(2025,"ジャレン","ジャクソンJr.",["ジャクソン"]), r(2023,"ジャ","モラント"),
+ r(2017,"マルク","ガソール"), r(2013,"ザック","ランドルフ"), r(2006,"パウ","ガソール")]),
+T("マイアミ・ヒート","MIA","#98002E",[
+ r(2026,"ノーマン","パウエル"), r(2025,"タイラー","ヒーロー"), r(2024,"バム","アデバヨ"),
+ r(2022,"ジミー","バトラー"), r(2019,"ドウェイン","ウェイド"), r(2018,"ゴラン","ドラギッチ"),
+ r(2016,"クリス","ボッシュ"), r(2014,"レブロン","ジェームズ"), r(2007,"シャキール","オニール"),
+ r(2002,"アロンゾ","モーニング")]),
+T("ミルウォーキー・バックス","MIL","#00471B",[
+ r(2026,"ヤニス","アデトクンボ",["アデトクンポ","アンテトクンポ"]), r(2025,"デイミアン","リラード"),
+ r(2023,"ジュルー","ホリデー"), r(2022,"クリス","ミドルトン"), r(2004,"マイケル","レッド"),
+ r(2002,"レイ","アレン"), r(2001,"グレン","ロビンソン"), r(1997,"ビン","ベイカー"),
+ r(1991,"リッキー","ピアース"), r(1991,"アルビン","ロバートソン")]),
+T("ミネソタ・ティンバーウルブズ","MIN","#0C2340",[
+ r(2026,"アンソニー","エドワーズ"), r(2024,"カール・アンソニー","タウンズ"),
+ r(2018,"ジミー","バトラー"), r(2014,"ケビン","ラブ"), r(2007,"ケビン","ガーネット"),
+ r(2004,"サム","カセール"), r(2002,"ウォーリー","ザービアック",["シュチェルビアク","シャーズビアク"]),
+ r(1997,"トム","ググリオッタ")]),
+T("ニューオーリンズ・ペリカンズ","NOP","#0C2340",[
+ r(2023,"ザイオン","ウィリアムソン"), r(2020,"ブランドン","イングラム"),
+ r(2019,"アンソニー","デイビス",["デイヴィス"]), r(2018,"デマーカス","カズンズ"),
+ r(2011,"クリス","ポール"), r(2009,"デビッド","ウェスト"), r(2004,"バロン","デイビス",["デイヴィス"]),
+ r(2004,"ジャマール","マグロア",["マグロワー"]), r(2003,"ジャマル","マッシュバーン")]),
+T("ニューヨーク・ニックス","NYK","#006BB6",[
+ r(2026,"ジェイレン","ブランソン"), r(2026,"カール・アンソニー","タウンズ"),
+ r(2024,"ジュリアス","ランドル"), r(2018,"クリスタプス","ポルジンギス"),
+ r(2017,"カーメロ","アンソニー"), r(2013,"タイソン","チャンドラー"),
+ r(2011,"アマレ","スタウダマイア",["ストゥーダマイア"]), r(2010,"デビッド","リー"),
+ r(2001,"ラトレル","スプリーウェル"), r(2001,"アラン","ヒューストン")]),
+T("オクラホマシティ・サンダー","OKC","#007AC1",[
+ r(2026,"シェイ","ギルジャス・アレクサンダー",["ギルジャスアレクサンダー"]),
+ r(2026,"チェット","ホルムグレン"), r(2025,"ジェイレン","ウィリアムズ"), r(2020,"クリス","ポール"),
+ r(2019,"ラッセル","ウェストブルック"), r(2019,"ポール","ジョージ"), r(2016,"ケビン","デュラント"),
+ r(2007,"レイ","アレン"), r(2005,"ラシャード","ルイス"), r(2003,"ゲイリー","ペイトン")]),
+T("オーランド・マジック","ORL","#0077C0",[
+ r(2024,"パオロ","バンケロ"), r(2021,"ニコラ","ブーチェビッチ"), r(2012,"ドワイト","ハワード"),
+ r(2009,"ラシャード","ルイス"), r(2009,"ジャミアー","ネルソン"), r(2005,"グラント","ヒル"),
+ r(2004,"トレイシー","マグレディ"), r(1998,"ペニー","ハーダウェイ"), r(1996,"シャキール","オニール")]),
+T("フィラデルフィア・76ers","PHI","#006BB6",[
+ r(2026,"タイリース","マクシー"), r(2024,"ジョエル","エンビード"), r(2022,"ジェームズ","ハーデン"),
+ r(2021,"ベン","シモンズ"), r(2013,"ジュルー","ホリデー"), r(2012,"アンドレ","イグダーラ"),
+ r(2010,"アレン","アイバーソン"), r(2002,"ディケンベ","ムトンボ",["ムトゥンボ"]),
+ r(2001,"セオ","ラトリフ"), r(1995,"ダナ","バロス")]),
+T("フェニックス・サンズ","PHX","#1D1160",[
+ r(2026,"デビン","ブッカー"), r(2025,"ケビン","デュラント"), r(2022,"クリス","ポール"),
+ r(2012,"スティーブ","ナッシュ"), r(2010,"アマレ","スタウダマイア",["ストゥーダマイア"]),
+ r(2009,"シャキール","オニール"), r(2007,"ショーン","マリオン"), r(2003,"ステフォン","マーブリー"),
+ r(2001,"ジェイソン","キッド"), r(1996,"チャールズ","バークレー")]),
+T("ポートランド・トレイルブレイザーズ","POR","#E03A3E",[
+ r(2026,"デニ","アブディヤ"), r(2023,"デイミアン","リラード"), r(2015,"ラマーカス","オルドリッジ"),
+ r(2010,"ブランドン","ロイ"), r(2001,"ラシード","ウォレス"), r(1994,"クライド","ドレクスラー"),
+ r(1994,"クリフォード","ロビンソン"), r(1993,"テリー","ポーター"), r(1991,"ケビン","ダックワース"),
+ r(1988,"スティーブ","ジョンソン")]),
+T("サクラメント・キングス","SAC","#5A2D81",[
+ r(2023,"ディアーロン","フォックス"), r(2023,"ドマンタス","サボニス"), r(2017,"デマーカス","カズンズ"),
+ r(2004,"ブラッド","ミラー"), r(2004,"ペジャ","ストヤコビッチ"), r(2003,"クリス","ウェバー"),
+ r(2001,"ブラデ","ディバッツ"), r(1998,"ミッチ","リッチモンド"), r(1981,"オーティス","バードソング"),
+ r(1980,"スコット","ウェドマン")]),
+T("サンアントニオ・スパーズ","SAS","#1A1A1A",[
+ r(2026,"ビクター","ウェンバンヤマ",["ヴェンバンヤマ"]), r(2026,"ディアーロン","フォックス"),
+ r(2022,"デジョンテ","マレー"), r(2019,"ラマーカス","オルドリッジ"),
+ r(2017,"カワイ","レナード",["レオナルド"]), r(2015,"ティム","ダンカン"),
+ r(2014,"トニー","パーカー"), r(2011,"マヌ","ジノビリ"), r(2001,"デビッド","ロビンソン"),
+ r(1996,"ショーン","エリオット")]),
+T("トロント・ラプターズ","TOR","#CE1141",[
+ r(2026,"スコッティ","バーンズ"), r(2026,"ブランドン","イングラム"), r(2023,"パスカル","シアカム"),
+ r(2022,"フレッド","バンブリート",["ヴァンブリート"]), r(2020,"カイル","ロウリー"),
+ r(2019,"カワイ","レナード",["レオナルド"]), r(2018,"デマー","デローザン"),
+ r(2010,"クリス","ボッシュ"), r(2004,"ビンス","カーター"), r(2001,"アントニオ","デイビス",["デイヴィス"])]),
+T("ユタ・ジャズ","UTA","#002B5C",[
+ r(2023,"ラウリ","マルカネン"), r(2022,"ルディ","ゴベア",["ゴベール"]),
+ r(2022,"ドノバン","ミッチェル"), r(2021,"マイク","コンリー"), r(2017,"ゴードン","ヘイワード"),
+ r(2011,"デロン","ウィリアムズ"), r(2008,"カルロス","ブーザー"), r(2007,"メメット","オクル"),
+ r(2004,"アンドレイ","キリレンコ"), r(2002,"カール","マローン")]),
+T("ワシントン・ウィザーズ","WAS","#002B5C",[
+ r(2021,"ブラッドリー","ビール"), r(2018,"ジョン","ウォール"), r(2008,"カロン","バトラー"),
+ r(2008,"アントワン","ジャミソン"), r(2007,"ギルバート","アリーナス"), r(2003,"マイケル","ジョーダン"),
+ r(1997,"クリス","ウェバー"), r(1996,"ジュワン","ハワード"), r(1992,"マイケル","アダムス"),
+ r(1991,"バーナード","キング")])
+];
+
+/* ---- 表記ゆれの吸収（スタメン版と同じエンジン） ---- */
+function norm(s){
+  if(!s) return "";
+  s = s.normalize("NFKC").trim();
+  s = s.replace(/[\u3041-\u3096]/g, c => String.fromCharCode(c.charCodeAt(0)+0x60));
+  s = s.replace(/ヴァ/g,"バ").replace(/ヴィ/g,"ビ").replace(/ヴェ/g,"ベ").replace(/ヴォ/g,"ボ").replace(/ヴ/g,"ブ");
+  s = s.replace(/[・･\s\u3000\-‐‑–—―−ー]/g,"");
+  s = s.replace(/JR\.?$/i,"").replace(/ジュニア$/,"");
+  s = s.normalize("NFD").replace(/[\u3099\u309A]/g,"").normalize("NFC");
+  const big = {"ァ":"ア","ィ":"イ","ゥ":"ウ","ェ":"エ","ォ":"オ","ャ":"ヤ","ュ":"ユ","ョ":"ヨ","ッ":"ツ","ヮ":"ワ"};
+  s = s.replace(/[ァィゥェォャュョッヮ]/g, c => big[c]);
+  return s.toUpperCase();
+}
+
+const board = document.getElementById("board");
+const index = new Map();
+let total = 0, got = 0, live = false, ended = false, left = 15*60, tick = null;
+
+DATA.forEach(t => {
+  const sec = document.createElement("section");
+  sec.className = "team";
+  sec.style.setProperty("--tc", t.color);
+  const head = document.createElement("div");
+  head.className = "team-head";
+  head.innerHTML = `<b></b><i></i>`;
+  head.querySelector("b").textContent = t.team;
+  head.querySelector("i").textContent = t.en;
+  sec.appendChild(head);
+
+  t.rows.forEach(row => {
+    const el = document.createElement("div");
+    el.className = "row";
+    el.innerHTML = `<div class="yr num"></div><div class="nm"></div>`;
+    el.querySelector(".yr").textContent = row.y;
+    el.dataset.full = (row.first ? row.first + "・" : "") + row.last;
+    sec.appendChild(el);
+    total++;
+    new Set([norm(row.last), ...(row.alias||[]).map(norm)]).forEach(k => {
+      if(!k) return;
+      if(!index.has(k)) index.set(k, []);
+      index.get(k).push(el);
+    });
+  });
+  board.appendChild(sec);
+});
+document.getElementById("total").textContent = total;
+
+const entry = document.getElementById("entry");
+const hint  = document.getElementById("hint");
+let composing = false;
+
+function submit(){
+  if(!live) return;
+  const key = norm(entry.value);
+  if(!key) return;
+  const rows = index.get(key);
+  if(!rows){ return; }
+  entry.value = "";          // 既知の解答なら、埋まったかどうかに関わらず消す
+  let hit = 0;
+  rows.forEach(el => {
+    if(el.classList.contains("done")) return;
+    el.classList.add("done");
+    el.querySelector(".nm").textContent = el.dataset.full;
+    hit++;
+  });
+  if(hit){
+    got += hit;
+    document.getElementById("got").textContent = got;
+    hint.textContent = hit > 1 ? `同姓 ${hit} マスが埋まりました` : "";
+    if(got === total) finish(false);
+  }
+}
+entry.addEventListener("compositionstart", () => composing = true);
+entry.addEventListener("compositionend", () => { composing = false; setTimeout(submit, 0); });
+entry.addEventListener("input", () => { if(!composing) submit(); });
+entry.addEventListener("keydown", e => { if(e.key === "Enter" && !e.isComposing){ e.preventDefault(); submit(); } });
+
+function paintClock(){
+  const m = Math.floor(left/60), s = left%60;
+  const el = document.getElementById("clock");
+  el.textContent = m + ":" + String(s).padStart(2,"0");
+  el.classList.toggle("low", left <= 60);
+}
+function runClock(){
+  clearInterval(tick);
+  tick = setInterval(() => { left--; paintClock(); if(left <= 0) finish(true); }, 1000);
+}
+function start(){
+  if(ended) return;
+  live = true;
+  entry.disabled = false; entry.focus();
+  document.getElementById("start").disabled = true;
+  document.getElementById("pause").disabled = false;
+  document.getElementById("giveup").disabled = false;
+  hint.textContent = "";
+  runClock();
+}
+function togglePause(){
+  if(ended) return;
+  const btn = document.getElementById("pause");
+  if(live){
+    live = false; clearInterval(tick);
+    entry.disabled = true; board.classList.add("hidden");
+    btn.textContent = "再開"; hint.textContent = "";
+  } else {
+    live = true; board.classList.remove("hidden");
+    entry.disabled = false; entry.focus();
+    btn.textContent = "一時停止"; runClock();
+  }
+}
+function finish(reveal){
+  live = false; ended = true;
+  clearInterval(tick);
+  entry.disabled = true;
+  board.classList.remove("hidden");
+  document.getElementById("pause").disabled = true;
+  document.getElementById("pause").textContent = "一時停止";
+  document.getElementById("giveup").disabled = true;
+  if(reveal){
+    document.querySelectorAll(".row:not(.done)").forEach(el => {
+      el.classList.add("shown");
+      el.querySelector(".nm").textContent = el.dataset.full;
+    });
+  }
+  hint.textContent = `終了 — ${got}/${total}（${Math.round(got/total*100)}%）`;
+}
+document.getElementById("start").addEventListener("click", start);
+document.getElementById("pause").addEventListener("click", togglePause);
+document.getElementById("giveup").addEventListener("click", () => finish(true));
+paintClock();
+</script>
+</body>
+</html>
